@@ -3,74 +3,85 @@ let data2 = new String();
 
 class Prettify {
   BetweenStation(string) {
-    try {
-      let obj = {};
-      let retval = {};
-      let arr = [];
-      let obj2 = {};
-      let data = string.split("~~~~~~~~");
-      let nore = data[0]?.split("~")[5]?.split("<") || [];
-      if (nore[0] == "No direct trains found") {
-        retval["success"] = false;
-        retval["time_stamp"] = Date.now();
-        retval["data"] = nore[0];
-        return retval;
-      }
-      if (
-        data[0] === "~~~~~Please try again after some time." ||
-        data[0] === "~~~~~From station not found" ||
-        data[0] === "~~~~~To station not found"
-      ) {
-        retval["success"] = false;
-        retval["time_stamp"] = Date.now();
-        retval["data"] = data[0].replaceAll("~", "");
-        return retval;
-      }
-      data = data.filter((el) => {
-        return el != "";
-      });
-      for (let i = 0; i < data.length; i++) {
-        let data1 = data[i].split("~^");
-        if (data1.length === 2) {
-          data1 = data1[1].split("~");
-          data1 = data1.filter((el) => {
-            return el != "";
-          });
-          obj["train_no"] = data1[0];
-          obj["train_name"] = data1[1];
-          obj["source_stn_name"] = data1[2];
-          obj["source_stn_code"] = data1[3];
-          obj["dstn_stn_name"] = data1[4];
-          obj["dstn_stn_code"] = data1[5];
-          obj["from_stn_name"] = data1[6];
-          obj["from_stn_code"] = data1[7];
-          obj["to_stn_name"] = data1[8];
-          obj["to_stn_code"] = data1[9];
-          obj["from_time"] = data1[10];
-          obj["to_time"] = data1[11];
-          obj["travel_time"] = data1[12];
-          obj["running_days"] = data1[13];
-          // NEW
-          obj["quotas"] = extractQuotas(data[i]);
-          obj["classes"] = extractClasses(data[i]);
-          obj["fares"] = extractFares(data[i]);
-          obj["coach_composition"] = extractCoachComposition(data[i]);
-          obj["zone"] = extractTrainZone(data[i]);
+  try {
+    let retval = {};
+    let arr = [];
 
-          obj2["train_base"] = obj;
-          arr.push(obj2);
-          obj = {};
-          obj2 = {};
-        }
-      }
-      retval["success"] = true;
-      retval["time_stamp"] = Date.now();
-      retval["data"] = arr;
-      return retval;
-    } catch (err) {
-      console.warn(err.message);
+    // ---- Error handling (keep as-is)
+    let nore = string.split("~")[5]?.split("<") || [];
+    if (nore[0] === "No direct trains found") {
+      return {
+        success: false,
+        time_stamp: Date.now(),
+        data: nore[0]
+      };
     }
+
+    if (
+      string.includes("Please try again after some time") ||
+      string.includes("From station not found") ||
+      string.includes("To station not found")
+    ) {
+      return {
+        success: false,
+        time_stamp: Date.now(),
+        data: string.replaceAll("~", "")
+      };
+    }
+
+    // ---- ✅ CORRECT TRAIN SPLIT
+    const trainBlocks = string.split("^").slice(1);
+
+    for (const block of trainBlocks) {
+      const fields = block.split("~").filter(Boolean);
+      if (fields.length < 14) continue;
+
+      const train = {
+        train_no: fields[0],
+        train_name: fields[1],
+
+        source_stn_name: fields[2],
+        source_stn_code: fields[3],
+        dstn_stn_name: fields[4],
+        dstn_stn_code: fields[5],
+
+        from_stn_name: fields[6],
+        from_stn_code: fields[7],
+        to_stn_name: fields[8],
+        to_stn_code: fields[9],
+
+        from_time: fields[10],
+        to_time: fields[11],
+        travel_time: fields[12],
+        running_days: fields[13],
+
+        // ✅ NOW THESE WORK CORRECTLY
+        quotas: extractQuotas(block),
+        classes: extractClasses(block),
+        fares: extractFares(block, extractCoachComposition(block)),
+        coach_composition: extractCoachComposition(block),
+        zone: extractTrainZone(block)
+      };
+
+      arr.push({ train_base: train });
+    }
+
+    return {
+      success: true,
+      time_stamp: Date.now(),
+      data: arr
+    };
+
+  } catch (err) {
+    console.warn(err.message);
+    return {
+      success: false,
+      time_stamp: Date.now(),
+      error: err.message
+    };
   }
+}
+
 
   getDayOnDate(DD, MM, YYYY) {
     let date = new Date(YYYY, MM, DD);

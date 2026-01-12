@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Ticket, User, Train as TrainIcon, Calendar, MapPin, CreditCard, Receipt, Plus, Trash2 } from 'lucide-react';
 import moment from 'moment';
+import axios from 'axios';
 import { 
   TRAIN_CLASSES, 
   QUOTAS, 
@@ -32,6 +33,30 @@ const TicketGeneration = () => {
     trainData.classes?.includes(c.value)
   );
 
+  // Filter available quotas for this train
+  const availableQuotas = trainData.quotas?.length > 0
+    ? QUOTAS.filter(q => trainData.quotas.includes(q.value))
+    : QUOTAS;
+
+  const PASSENGER_TYPES = [
+    { label: 'Adult', value: 'adult' },
+    { label: 'Child', value: 'child' },
+    { label: 'Senior Male', value: 'senior_male' },
+    { label: 'Senior Female', value: 'senior_female' },
+    { label: 'Divyang', value: 'divyang' },
+    { label: 'Escort', value: 'escort' },
+  ];
+
+  const getPassengerFare = (cls, qta, type) => {
+    const qKey = qta === 'TQ' ? 'tatkal' : 'normal';
+    const fare = trainData.fares?.[cls]?.[qKey]?.[type];
+    return fare !== null && fare !== undefined ? fare : 0;
+  };
+
+  const calculateTotalTicketFare = (passengers, cls, qta) => {
+    return passengers.reduce((sum, p) => sum + getPassengerFare(cls, qta, p.passengerType || 'adult'), 0);
+  };
+
   const [formData, setFormData] = useState({
     pnr: generatePNR(),
     invoiceNo: generateInvoice(),
@@ -47,17 +72,36 @@ const TicketGeneration = () => {
     arrivalTime: trainData.to_time || '',
     distance: '',
     trainClass: trainData.classes?.[0] || 'SL',
-    quota: 'GN',
+    quota: trainData.quotas?.[0] || 'GN',
     bookingDate: moment().format('YYYY-MM-DDTHH:mm'),
     passengers: [
-      { name: '', age: '', gender: 'Male', bookingStatus: 'CNF', coach: trainData.coach_composition?.[trainData.classes?.[0] || 'SL']?.[0] || 'S1', seat: '12', currentStatus: 'CNF' }
+      { 
+        name: '', 
+        age: '', 
+        gender: 'Male', 
+        passengerType: 'adult',
+        bookingStatus: 'CNF', 
+        coach: trainData.coach_composition?.[trainData.classes?.[0] || 'SL']?.[0] || 'S1', 
+        seat: '12', 
+        currentStatus: 'CNF' 
+      }
     ],
-    ticketFare: trainData.fares?.[trainData.classes?.[0] || 'SL']?.[0] || '500.00',
-    taxableValue: trainData.fares?.[trainData.classes?.[0] || 'SL']?.[0] || '500.00',
+    ticketFare: '0.00',
+    taxableValue: '0.00',
     convenienceFee: CONVENIENCE_FEE.toFixed(2),
   });
 
   const [totalFare, setTotalFare] = useState(0);
+  const [isGenerating, setIsGenerating] = useState(false);
+  // Calculate initial ticket fare
+  useEffect(() => {
+    const initialFare = calculateTotalTicketFare(formData.passengers, formData.trainClass, formData.quota);
+    setFormData(prev => ({
+      ...prev,
+      ticketFare: initialFare.toFixed(2),
+      taxableValue: initialFare.toFixed(2)
+    }));
+  }, []);
 
   useEffect(() => {
     const fare = parseFloat(formData.ticketFare) || 0;
@@ -68,15 +112,18 @@ const TicketGeneration = () => {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     
-    if (name === 'trainClass') {
-      const newFare = trainData.fares?.[value]?.[0] || '0.00';
-      const defaultCoach = trainData.coach_composition?.[value]?.[0] || '';
+    if (name === 'trainClass' || name === 'quota') {
+      const newClass = name === 'trainClass' ? value : formData.trainClass;
+      const newQuota = name === 'quota' ? value : formData.quota;
+      
+      const newFare = calculateTotalTicketFare(formData.passengers, newClass, newQuota);
+      const defaultCoach = trainData.coach_composition?.[newClass]?.[0] || (newClass.startsWith('A') || newClass.startsWith('B') || newClass === '1A' || newClass === '2A' || newClass === '3A' ? 'B1' : 'S1');
       
       setFormData(prev => ({ 
         ...prev, 
         [name]: value,
-        ticketFare: newFare,
-        taxableValue: newFare,
+        ticketFare: newFare.toFixed(2),
+        taxableValue: newFare.toFixed(2),
         passengers: prev.passengers.map(p => ({ ...p, coach: defaultCoach }))
       }));
     } else {
@@ -92,29 +139,90 @@ const TicketGeneration = () => {
     if (field === 'bookingStatus') {
       updatedPassengers[index]['currentStatus'] = value;
     }
-    
-    setFormData(prev => ({ ...prev, passengers: updatedPassengers }));
+
+    // Recalculate fare if passenger type changes
+    if (field === 'passengerType') {
+      const newFare = calculateTotalTicketFare(updatedPassengers, formData.trainClass, formData.quota);
+      setFormData(prev => ({ 
+        ...prev, 
+        passengers: updatedPassengers,
+        ticketFare: newFare.toFixed(2),
+        taxableValue: newFare.toFixed(2)
+      }));
+    } else {
+      setFormData(prev => ({ ...prev, passengers: updatedPassengers }));
+    }
   };
 
   const addPassenger = () => {
+    const defaultCoach = trainData.coach_composition?.[formData.trainClass]?.[0] || (formData.trainClass.startsWith('A') || formData.trainClass.startsWith('B') || formData.trainClass === '1A' || formData.trainClass === '2A' || formData.trainClass === '3A' ? 'B1' : 'S1');
+    const newPassenger = { 
+      name: '', 
+      age: '', 
+      gender: 'Male', 
+      passengerType: 'adult',
+      bookingStatus: 'CNF', 
+      coach: defaultCoach, 
+      seat: '', 
+      currentStatus: 'CNF' 
+    };
+    
+    const updatedPassengers = [...formData.passengers, newPassenger];
+    const newFare = calculateTotalTicketFare(updatedPassengers, formData.trainClass, formData.quota);
+    
     setFormData(prev => ({
       ...prev,
-      passengers: [...prev.passengers, { name: '', age: '', gender: 'Male', bookingStatus: 'CNF', coach: 'S1', seat: '', currentStatus: 'CNF' }]
+      passengers: updatedPassengers,
+      ticketFare: newFare.toFixed(2),
+      taxableValue: newFare.toFixed(2)
     }));
   };
 
   const removePassenger = (index) => {
     if (formData.passengers.length > 1) {
       const updatedPassengers = formData.passengers.filter((_, i) => i !== index);
-      setFormData(prev => ({ ...prev, passengers: updatedPassengers }));
+      const newFare = calculateTotalTicketFare(updatedPassengers, formData.trainClass, formData.quota);
+      setFormData(prev => ({ 
+        ...prev, 
+        passengers: updatedPassengers,
+        ticketFare: newFare.toFixed(2),
+        taxableValue: newFare.toFixed(2)
+      }));
     }
   };
 
-  const handleGenerate = (e) => {
+  const handleGenerate = async (e) => {
     e.preventDefault();
-    console.log('Generating Ticket:', formData);
-    // Here we would typically navigate to a printable ticket view or trigger a download
-    alert('Ticket data generated! (See console for details)');
+    setIsGenerating(true);
+    
+    try {
+      console.log('Generating Ticket:', formData);
+      
+      const response = await axios.post('http://localhost:3000/tickets/generate', formData, {
+        responseType: 'blob', // Important for handling binary data
+      });
+
+      // Create a URL for the blob
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      
+      // Filename from PNR
+      link.setAttribute('download', `Ticket_${formData.pnr}.docx`);
+      
+      // Append to body, click, and cleanup
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      alert('Ticket generated and downloaded successfully!');
+    } catch (error) {
+      console.error('Error generating ticket:', error);
+      alert('Failed to generate ticket. Please ensure the backend is running and correct template exists.');
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const isFormValid = () => {
@@ -160,16 +268,17 @@ const TicketGeneration = () => {
               <TrainIcon className="h-5 w-5 text-blue-600" />
               <h2 className="font-bold text-gray-800 uppercase tracking-wide text-sm">Journey Information</h2>
             </div>
-            <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="md:col-span-2">
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Train Name & Number</label>
-                <div className="flex space-x-2">
+            <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-10">
+              {/* Train & Number - Usually takes 2 cols on Desktop */}
+              <div className="lg:col-span-2 space-y-2">
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider">Train Name & Number</label>
+                <div className="grid grid-cols-[100px_1fr] rounded-xl overflow-hidden border border-gray-200 shadow-sm focus-within:border-blue-500 focus-within:ring-4 focus-within:ring-blue-500/10 transition-all">
                   <input 
                     type="text" 
                     name="trainNo"
                     value={formData.trainNo}
                     onChange={handleInputChange}
-                    className="w-24 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 font-bold text-blue-600"
+                    className="w-full bg-gray-50 border-r border-gray-200 px-4 py-3 font-bold text-blue-600 focus:outline-none"
                     placeholder="22137"
                   />
                   <input 
@@ -177,95 +286,111 @@ const TicketGeneration = () => {
                     name="trainName"
                     value={formData.trainName}
                     onChange={handleInputChange}
-                    className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 font-bold text-gray-800"
+                    className="w-full bg-white px-4 py-3 font-bold text-gray-800 focus:outline-none uppercase"
                     placeholder="PRERANA EXPRESS"
                   />
                 </div>
               </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">PNR Number</label>
+
+              {/* PNR - Distinct field */}
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider">PNR Number</label>
                 <input 
                   type="text" 
                   name="pnr"
                   value={formData.pnr}
                   onChange={handleInputChange}
-                  className="w-full bg-blue-50 border border-blue-100 rounded-lg px-3 py-2 font-black text-blue-700 tracking-[0.2em]"
+                  className="w-full bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 font-black text-blue-700 tracking-[0.2em] focus:ring-4 focus:ring-blue-500/10 focus:border-blue-400 outline-none transition-all shadow-inner"
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">From Station</label>
-                <div className="flex space-x-1">
+              {/* From Station - Full width on mobile/tablet to avoid squishing */}
+              <div className="md:col-span-2 lg:col-span-1 space-y-2">
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider">From Station</label>
+                <div className="grid grid-cols-[80px_1fr] rounded-xl overflow-hidden border border-gray-200 shadow-sm focus-within:border-blue-500 focus-within:ring-4 focus-within:ring-blue-500/10 transition-all">
                   <input 
                     type="text" 
                     name="fromStationCode"
                     value={formData.fromStationCode}
                     onChange={handleInputChange}
-                    className="w-20 flex-shrink-0 bg-gray-50 border border-gray-200 rounded-lg px-2 py-2 font-bold uppercase"
+                    className="w-full bg-gray-50 border-r border-gray-200 px-3 py-3 font-bold uppercase text-center focus:outline-none placeholder:text-gray-300"
+                    placeholder="CODE"
                   />
                   <input 
                     type="text" 
                     name="fromStation"
                     value={formData.fromStation}
                     onChange={handleInputChange}
-                    className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2"
+                    className="w-full bg-white px-4 py-3 font-medium text-gray-800 focus:outline-none"
+                    placeholder="Station Name"
                   />
                 </div>
               </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">To Station</label>
-                <div className="flex space-x-1">
+
+              {/* To Station */}
+              <div className="md:col-span-2 lg:col-span-1 space-y-2">
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider">To Station</label>
+                <div className="grid grid-cols-[80px_1fr] rounded-xl overflow-hidden border border-gray-200 shadow-sm focus-within:border-blue-500 focus-within:ring-4 focus-within:ring-blue-500/10 transition-all">
                   <input 
                     type="text" 
                     name="toStationCode"
                     value={formData.toStationCode}
                     onChange={handleInputChange}
-                    className="w-20 flex-shrink-0 bg-gray-50 border border-gray-200 rounded-lg px-2 py-2 font-bold uppercase"
+                    className="w-full bg-gray-50 border-r border-gray-200 px-3 py-3 font-bold uppercase text-center focus:outline-none placeholder:text-gray-300"
+                    placeholder="CODE"
                   />
                   <input 
                     type="text" 
                     name="toStation"
                     value={formData.toStation}
                     onChange={handleInputChange}
-                    className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2"
+                    className="w-full bg-white px-4 py-3 font-medium text-gray-800 focus:outline-none"
+                    placeholder="Station Name"
                   />
                 </div>
               </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Distance (km)</label>
-                <input 
-                  type="number" 
-                  name="distance"
-                  value={formData.distance}
-                  onChange={handleInputChange}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2"
-                  placeholder="e.g. 450"
-                  required
-                />
+
+              {/* Distance */}
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider">Distance (km)</label>
+                <div className="relative">
+                  <input 
+                    type="number" 
+                    name="distance"
+                    value={formData.distance}
+                    onChange={handleInputChange}
+                    className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all shadow-sm"
+                    placeholder="e.g. 450"
+                  />
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">KM</span>
+                </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Departure Date & Time</label>
-                <div className="flex space-x-1">
-                  <input type="date" name="departureDate" value={formData.departureDate} onChange={handleInputChange} className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-2 py-2 text-sm" />
-                  <input type="text" name="departureTime" value={formData.departureTime} onChange={handleInputChange} className="w-20 bg-gray-50 border border-gray-200 rounded-lg px-2 py-2 text-sm" />
+              {/* Dates & Times */}
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider">Departure</label>
+                <div className="grid grid-cols-[1fr_100px] rounded-xl overflow-hidden border border-gray-200 shadow-sm focus-within:border-blue-500 focus-within:ring-4 focus-within:ring-blue-500/10 transition-all">
+                  <input type="date" name="departureDate" value={formData.departureDate} onChange={handleInputChange} className="w-full px-3 py-3 text-sm focus:outline-none" />
+                  <input type="text" name="departureTime" value={formData.departureTime} onChange={handleInputChange} className="w-full bg-gray-50 border-l border-gray-200 px-3 py-3 text-sm font-bold text-center focus:outline-none" placeholder="HH:MM" />
                 </div>
               </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Arrival Date & Time</label>
-                <div className="flex space-x-1">
-                  <input type="date" name="arrivalDate" value={formData.arrivalDate} onChange={handleInputChange} className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-2 py-2 text-sm" />
-                  <input type="text" name="arrivalTime" value={formData.arrivalTime} onChange={handleInputChange} className="w-20 bg-gray-50 border border-gray-200 rounded-lg px-2 py-2 text-sm" />
+
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider">Arrival</label>
+                <div className="grid grid-cols-[1fr_100px] rounded-xl overflow-hidden border border-gray-200 shadow-sm focus-within:border-blue-500 focus-within:ring-4 focus-within:ring-blue-500/10 transition-all">
+                  <input type="date" name="arrivalDate" value={formData.arrivalDate} onChange={handleInputChange} className="w-full px-3 py-3 text-sm focus:outline-none" />
+                  <input type="text" name="arrivalTime" value={formData.arrivalTime} onChange={handleInputChange} className="w-full bg-gray-50 border-l border-gray-200 px-3 py-3 text-sm font-bold text-center focus:outline-none" placeholder="HH:MM" />
                 </div>
               </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Class & Quota</label>
-                <div className="flex space-x-1">
-                  <select name="trainClass" value={formData.trainClass} onChange={handleInputChange} className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-2 py-2 text-sm font-semibold min-w-0">
+
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider">Class & Quota</label>
+                <div className="grid grid-cols-2 rounded-xl overflow-hidden border border-gray-200 shadow-sm focus-within:border-blue-500 focus-within:ring-4 focus-within:ring-blue-500/10 transition-all">
+                  <select name="trainClass" value={formData.trainClass} onChange={handleInputChange} className="w-full px-3 py-3 text-xs font-bold focus:outline-none cursor-pointer">
                     {availableClasses.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
                   </select>
-                  <select name="quota" value={formData.quota} onChange={handleInputChange} className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-2 py-2 text-sm font-semibold min-w-0">
-                    {QUOTAS.map(q => <option key={q.value} value={q.value}>{q.label}</option>)}
+                  <select name="quota" value={formData.quota} onChange={handleInputChange} className="w-full bg-gray-50 border-l border-gray-200 px-3 py-3 text-xs font-bold focus:outline-none cursor-pointer">
+                    {availableQuotas.map(q => <option key={q.value} value={q.value}>{q.label}</option>)}
                   </select>
                 </div>
               </div>
@@ -326,6 +451,17 @@ const TicketGeneration = () => {
                     </div>
 
                     <div>
+                      <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Type</label>
+                      <select 
+                        value={p.passengerType} 
+                        onChange={(e) => handlePassengerChange(index, 'passengerType', e.target.value)}
+                        className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm font-bold text-blue-600"
+                      >
+                        {PASSENGER_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                      </select>
+                    </div>
+
+                    <div>
                       <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Booking Status</label>
                       <select 
                         value={p.bookingStatus} 
@@ -382,7 +518,7 @@ const TicketGeneration = () => {
               <CreditCard className="h-5 w-5 text-orange-600" />
               <h2 className="font-bold text-gray-800 uppercase tracking-wide text-sm">Payment & Invoice</h2>
             </div>
-            <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Ticket Fare (₹)</label>
                 <input 
@@ -390,7 +526,7 @@ const TicketGeneration = () => {
                   name="ticketFare"
                   value={formData.ticketFare}
                   onChange={handleInputChange}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 font-bold text-gray-800"
+                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 font-bold text-gray-800 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                 />
               </div>
               <div>
@@ -405,7 +541,7 @@ const TicketGeneration = () => {
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Total Fare (₹)</label>
-                <div className="w-full bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2 font-black text-emerald-700 text-lg">
+                <div className="w-full bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2 font-black text-emerald-700 text-lg flex items-center h-[42px]">
                   ₹ {totalFare}
                 </div>
               </div>
@@ -417,7 +553,7 @@ const TicketGeneration = () => {
                   name="taxableValue"
                   value={formData.taxableValue}
                   onChange={handleInputChange}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2"
+                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                 />
               </div>
               <div>
@@ -427,7 +563,7 @@ const TicketGeneration = () => {
                   name="invoiceNo"
                   value={formData.invoiceNo}
                   onChange={handleInputChange}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 font-mono text-sm"
+                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 font-mono text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                 />
               </div>
               <div>
@@ -437,7 +573,7 @@ const TicketGeneration = () => {
                   name="bookingDate"
                   value={formData.bookingDate}
                   onChange={handleInputChange}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm"
+                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                 />
               </div>
             </div>
@@ -453,8 +589,8 @@ const TicketGeneration = () => {
                 : "bg-gray-300 text-gray-500 cursor-not-allowed shadow-none"
               }`}
             >
-              <Receipt className="h-6 w-6" />
-              <span>Generate E-Ticket</span>
+              <Receipt className={`h-6 w-6 ${isGenerating ? 'animate-spin' : ''}`} />
+              <span>{isGenerating ? 'Generating...' : 'Generate E-Ticket'}</span>
             </button>
           </div>
         </form>

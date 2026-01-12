@@ -5,6 +5,7 @@ export const TRAIN_CLASSES = [
   { label: 'AC First Class (1A)', value: '1A' },
   { label: 'Second Sitting (2S)', value: '2S' },
   { label: 'AC Chair Car (CC)', value: 'CC' },
+  { label: 'General (GN)', value: 'GN' },
 ];
 
 export const QUOTAS = [
