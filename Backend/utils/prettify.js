@@ -4,8 +4,45 @@ let data2 = new String();
 class Prettify {
   BetweenStation(string) {
   try {
-    let retval = {};
     let arr = [];
+
+    // ---- 1. Handle JSON Input (Objects or Strings)
+    let inputData = null;
+    if (typeof string === 'object') {
+      inputData = string;
+    } else if (typeof string === 'string' && (string.trim().startsWith('{') || string.trim().startsWith('['))) {
+      try {
+        inputData = JSON.parse(string);
+      } catch (e) {
+        // Not valid JSON, proceed to legacy parsing
+      }
+    }
+
+    if (inputData) {
+      if (inputData.success && Array.isArray(inputData.data)) {
+        // If already in prettified format (contains train_base), return as is
+        if (inputData.data.length > 0 && inputData.data[0].train_base) {
+          return inputData;
+        }
+        // If it's a raw list of trains in JSON, map them
+        arr = inputData.data.map(t => ({ train_base: t }));
+      } else if (Array.isArray(inputData)) {
+        arr = inputData.map(t => ({ train_base: t }));
+      }
+
+      if (arr.length > 0) {
+        return {
+          success: true,
+          time_stamp: Date.now(),
+          data: arr
+        };
+      }
+    }
+
+    // ---- 2. Legacy Raw String Parsing
+    if (typeof string !== 'string') {
+        return { success: false, time_stamp: Date.now(), data: "Invalid input type" };
+    }
 
     // ---- Error handling (keep as-is)
     let nore = string.split("~")[5]?.split("<") || [];
@@ -29,7 +66,7 @@ class Prettify {
       };
     }
 
-    // ---- ✅ CORRECT TRAIN SPLIT
+    // ---- TRAIN SPLIT
     const trainBlocks = string.split("^").slice(1);
 
     for (const block of trainBlocks) {
@@ -143,21 +180,65 @@ class Prettify {
     return retval;
   }
 
-  PnrStatus(string){
-    let retval = {};
-    var pattern = /data\s*=\s*({.*?;)/
-    let match = string.match(pattern)[0].slice(7,-1)
-    let data = JSON.parse(match)
-    retval["success"] = true;
-    retval["time_stamp"] = Date.now();
-    retval["data"] = data
-    return retval
+  PnrStatus(string) {
+    try {
+      // 1. Handle JSON
+      if (typeof string === 'object') {
+        return { success: true, time_stamp: Date.now(), data: string.data || string };
+      }
+      if (typeof string === 'string' && string.trim().startsWith('{')) {
+        try {
+          const data = JSON.parse(string);
+          return { success: true, time_stamp: Date.now(), data: data.data || data };
+        } catch (e) {}
+      }
+
+      // 2. Legacy Parsing
+      let retval = {};
+      var pattern = /data\s*=\s*({.*?;)/;
+      let match = string.match(pattern);
+      if (!match) return { success: false, data: "PNR data pattern not found" };
+
+      let jsonStr = match[0].slice(7, -1);
+      let data = JSON.parse(jsonStr);
+      retval["success"] = true;
+      retval["time_stamp"] = Date.now();
+      retval["data"] = data;
+      return retval;
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
   }
 
   CheckTrain(string) {
     try {
       let obj = {};
       let retval = {};
+
+      // ---- 1. Handle JSON Input
+      let inputData = null;
+      if (typeof string === 'object') {
+        inputData = string;
+      } else if (typeof string === 'string' && (string.trim().startsWith('{') || string.trim().startsWith('['))) {
+        try {
+          inputData = JSON.parse(string);
+        } catch (e) {}
+      }
+
+      if (inputData) {
+        if (inputData.success && inputData.data) return inputData;
+        if (inputData.train_no) {
+          return {
+            success: true,
+            time_stamp: Date.now(),
+            data: inputData
+          };
+        }
+      }
+
+      // ---- 2. Legacy Parsing
+      if (typeof string !== 'string') return { success: false, data: "Invalid input" };
+
       let data = string.split("~~~~~~~~");
       if (
         data[0] === "~~~~~Please try again after some time." ||
