@@ -1,3 +1,5 @@
+import { CLASS_PRIORITY, PASSENGER_TYPES, VALID_CLASSES, ZONES } from "../constants/trainConstants.js";
+
 export function extractClasses(raw) {
   if (typeof raw === 'object') {
     return raw.classes || raw.train_base?.classes || [];
@@ -44,20 +46,13 @@ export function extractFares(raw, coachComposition = {}) {
   const slabs = match[3].split(":");
 
   // Classes must come from rake, in priority order
-  const classPriority = ["1A", "2A", "3A", "3E", "SL", "2S", "GN"];
+  const classPriority = CLASS_PRIORITY
 
   const availableClasses = classPriority.filter(
     cls => coachComposition[cls]
   );
 
-  const passengerTypes = [
-    "adult",
-    "child",
-    "senior_male",
-    "senior_female",
-    "divyang",
-    "escort"
-  ];
+  const passengerTypes = PASSENGER_TYPES;
 
   const fares = {};
   let slabPtr = 0;
@@ -119,7 +114,7 @@ export function extractCoachComposition(raw) {
   const tokens = match[2].split(":");
   let currentClass = null;
 
-  const validClasses = ["GN", "1A", "2A", "3A", "3E", "SL", "2S", "CC", "EC", "EA"];
+  const validClasses = VALID_CLASSES;
 
   for (let token of tokens) {
     token = token.trim();
@@ -179,12 +174,7 @@ export function extractTrainZone(raw) {
   }
   if (typeof raw !== 'string') return null;
 
-  const zones = [
-    "CR","ER","ECR","ECOR","NR","NER","NFR","NCR",
-    "NW","SCR","SER","SECR","SWR","SR","WR","WCR"
-  ];
-
-  for (const zone of zones) {
+  for (const zone of ZONES) {
     const regex = new RegExp(`~${zone}~`);
     if (regex.test(raw)) {
       return zone;

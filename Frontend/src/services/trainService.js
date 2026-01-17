@@ -35,3 +35,15 @@ export const getTrainRoute = async (trainNo) => {
     throw error;
   }
 };
+
+export const generateTicket = async (formData) => {
+  try {
+    const response = await api.post('/tickets/generate', formData, {
+      responseType: 'blob',
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error generating ticket:', error);
+    throw error;
+  }
+};

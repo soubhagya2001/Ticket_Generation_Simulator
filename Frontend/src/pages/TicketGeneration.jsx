@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Ticket, User, Train as TrainIcon, Calendar, MapPin, CreditCard, Receipt, Plus, Trash2 } from 'lucide-react';
 import moment from 'moment';
-import axios from 'axios';
+import { generateTicket } from '../services/trainService';
 import { 
   TRAIN_CLASSES, 
   QUOTAS, 
@@ -10,7 +10,8 @@ import {
   GENDERS, 
   CONVENIENCE_FEE,
   SEAT_TYPES
-} from '../utils/constants';
+} from '../../constants/constants';
+import { PASSENGER_TYPES } from '../../constants/miscConstant';
 
 const TicketGeneration = () => {
   const location = useLocation();
@@ -39,14 +40,7 @@ const TicketGeneration = () => {
     ? QUOTAS.filter(q => trainData.quotas.includes(q.value))
     : QUOTAS;
 
-  const PASSENGER_TYPES = [
-    { label: 'Adult', value: 'adult' },
-    { label: 'Child', value: 'child' },
-    { label: 'Senior Male', value: 'senior_male' },
-    { label: 'Senior Female', value: 'senior_female' },
-    { label: 'Divyang', value: 'divyang' },
-    { label: 'Escort', value: 'escort' },
-  ];
+  
 
   const getPassengerFare = (cls, qta, type) => {
     const qKey = qta === 'TQ' ? 'tatkal' : 'normal';
@@ -199,14 +193,10 @@ const TicketGeneration = () => {
     setIsGenerating(true);
     
     try {
-      console.log('Generating Ticket:', formData);
-      
-      const response = await axios.post('http://localhost:3000/tickets/generate', formData, {
-        responseType: 'blob', // Important for handling binary data
-      });
+      const data = await generateTicket(formData);
 
       // Create a URL for the blob
-      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const url = window.URL.createObjectURL(new Blob([data]));
       const link = document.createElement('a');
       link.href = url;
       
@@ -219,10 +209,10 @@ const TicketGeneration = () => {
       link.parentNode.removeChild(link);
       window.URL.revokeObjectURL(url);
 
-      alert('Ticket generated and downloaded successfully!');
+      alert('Ticket generated successfully!');
     } catch (error) {
       console.error('Error generating ticket:', error);
-      alert('Failed to generate ticket. Please ensure the backend is running and correct template exists.');
+      alert('Failed to generate ticket.');
     } finally {
       setIsGenerating(false);
     }

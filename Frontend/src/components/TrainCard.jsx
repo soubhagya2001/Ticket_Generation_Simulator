@@ -1,12 +1,13 @@
 import React from 'react';
 import { Clock, Navigation, CalendarDays, ChevronRight } from 'lucide-react';
 import { cn } from '../utils/utils';
+import { DAYS_SHORT } from '../../constants/miscConstant';
 
 const TrainCard = ({ train, onViewRoute, onGenerateTicket }) => {
   const { train_base } = train;
   
   // Running days representation: "0010011" -> M T W T F S S
-  const days = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+  const days = DAYS_SHORT;
   const runningDays = train_base.running_days.split('');
 
   return (

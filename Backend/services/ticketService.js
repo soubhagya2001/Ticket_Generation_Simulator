@@ -6,21 +6,12 @@ import path from "path";
 import moment from "moment";
 import QRCode from "qrcode";
 import AdmZip from "adm-zip";
-
-const CLASS_MAP = {
-  'SL': 'SLEEPER CLASS (SL)',
-  '3A': 'AC 3 TIER (3A)',
-  '2A': 'AC 2 TIER (2A)',
-  '1A': 'AC FIRST CLASS (1A)',
-  '2S': 'SECOND SITTING (2S)',
-  'CC': 'AC CHAIR CAR (CC)',
-  'GN': 'GENERAL (GN)',
-  '3E': '3 AC ECONOMY (3E)'
-};
+import { CLASS_MAP } from "../constants/trainConstants.js";
+import { FOLDER_PATH, TEMPLATE_FILE_NAME } from "../constants/templateConstants.js";
 
 export const generateTicketDOCX = async (ticketData) => {
   try {
-    const templatePath = path.resolve("ticketTemplates", "normal_template.docx");
+    const templatePath = path.resolve(FOLDER_PATH, TEMPLATE_FILE_NAME);
     const content = fs.readFileSync(templatePath, "binary");
     
     // 1. First, fill text placeholders using docxtemplater
