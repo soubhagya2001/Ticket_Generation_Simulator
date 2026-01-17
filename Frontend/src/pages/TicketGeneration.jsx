@@ -8,7 +8,8 @@ import {
   QUOTAS, 
   BOOKING_STATUSES, 
   GENDERS, 
-  CONVENIENCE_FEE 
+  CONVENIENCE_FEE,
+  SEAT_TYPES
 } from '../utils/constants';
 
 const TicketGeneration = () => {
@@ -83,6 +84,7 @@ const TicketGeneration = () => {
         bookingStatus: 'CNF', 
         coach: trainData.coach_composition?.[trainData.classes?.[0] || 'SL']?.[0] || 'S1', 
         seat: '12', 
+        seatType: 'UPPER',
         currentStatus: 'CNF' 
       }
     ],
@@ -164,6 +166,7 @@ const TicketGeneration = () => {
       bookingStatus: 'CNF', 
       coach: defaultCoach, 
       seat: '', 
+      seatType: 'UPPER',
       currentStatus: 'CNF' 
     };
     
@@ -486,6 +489,16 @@ const TicketGeneration = () => {
                         </select>
                         <input type="text" value={p.seat} onChange={(e) => handlePassengerChange(index, 'seat', e.target.value)} className="w-1/2 bg-white border border-gray-200 rounded-lg px-2 py-2 text-xs font-bold uppercase" placeholder="Seat" required />
                       </div>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Berth Type</label>
+                      <select 
+                        value={p.seatType} 
+                        onChange={(e) => handlePassengerChange(index, 'seatType', e.target.value)}
+                        className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm font-bold"
+                      >
+                        {SEAT_TYPES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                      </select>
                     </div>
                     <div>
                       <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Current Status</label>

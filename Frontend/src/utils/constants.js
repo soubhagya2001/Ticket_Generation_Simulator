@@ -1,11 +1,12 @@
 export const TRAIN_CLASSES = [
-  { label: 'Sleeper (SL)', value: 'SL' },
-  { label: 'AC 3 Tier (3A)', value: '3A' },
-  { label: 'AC 2 Tier (2A)', value: '2A' },
-  { label: 'AC First Class (1A)', value: '1A' },
-  { label: 'Second Sitting (2S)', value: '2S' },
-  { label: 'AC Chair Car (CC)', value: 'CC' },
-  { label: 'General (GN)', value: 'GN' },
+  { label: 'SLEEPER CLASS (SL)', value: 'SL' },
+  { label: 'AC 3 TIER (3A)', value: '3A' },
+  { label: 'AC 2 TIER (2A)', value: '2A' },
+  { label: 'AC FIRST CLASS (1A)', value: '1A' },
+  { label: 'SECOND SITTING (2S)', value: '2S' },
+  { label: 'AC CHAIR CAR (CC)', value: 'CC' },
+  { label: 'GENERAL (GN)', value: 'GN' },
+  { label: '3 AC ECONOMY (3E)', value: '3E' },
 ];
 
 export const QUOTAS = [
@@ -27,6 +28,16 @@ export const GENDERS = [
   { label: 'Male', value: 'Male' },
   { label: 'Female', value: 'Female' },
   { label: 'Transgender', value: 'Transgender' },
+];
+
+export const SEAT_TYPES = [
+  { label: 'LOWER', value: 'LOWER' },
+  { label: 'MIDDLE', value: 'MIDDLE' },
+  { label: 'UPPER', value: 'UPPER' },
+  { label: 'SIDE LOWER', value: 'SIDE LOWER' },
+  { label: 'SIDE UPPER', value: 'SIDE UPPER' },
+  { label: 'SIDE MIDDLE', value: 'SIDE MIDDLE' },
+  { label: 'WINDOW SIDE', value: 'WINDOW SIDE' },
 ];
 
 export const CONVENIENCE_FEE = 23.60;
