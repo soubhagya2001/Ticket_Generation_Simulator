@@ -31,8 +31,8 @@ const SearchForm = ({ onSearch, isLoading }) => {
         setShowToSuggestions(false);
       }
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
   }, []);
 
   const getStations = (query) => {
@@ -97,50 +97,70 @@ const SearchForm = ({ onSearch, isLoading }) => {
   };
 
   const swapStations = () => {
-    const temp = from;
+    // Swap text values
+    const tempText = from;
     setFrom(to);
-    setTo(temp);
+    setTo(tempText);
+
+    // Swap suggestion lists
+    const tempSuggestions = fromSuggestions;
+    setFromSuggestions(toSuggestions);
+    setToSuggestions(tempSuggestions);
+
+    // Hide any open suggestion boxes
+    setShowFromSuggestions(false);
+    setShowToSuggestions(false);
   };
 
   const isSearchDisabled = !from || !to || isLoading;
 
   const renderSuggestions = (suggestions, type) => {
-    if (suggestions.length === 0) return null;
-    return (
-      <div className="absolute z-50 w-full mt-1 bg-white border border-gray-100 rounded-xl shadow-2xl max-h-60 overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
-        {suggestions.map((station) => (
-          <button
-            key={station.code}
-            type="button"
-            className="w-full text-left px-4 py-3 hover:bg-blue-50 transition-colors flex items-center justify-between group"
-            onClick={() => selectStation(station, type)}
-          >
-            <div>
-              <span className="font-bold text-gray-800 group-hover:text-blue-700">{station.name}</span>
-              <p className="text-xs text-gray-400 font-medium tracking-wider uppercase">{station.code}</p>
-            </div>
-            <MapPin className="h-4 w-4 text-gray-300 group-hover:text-blue-400" />
-          </button>
-        ))}
-      </div>
-    );
-  };
+  if (!suggestions.length) return null;
 
   return (
-    <div className="w-full max-w-5xl mx-auto -mt-10 bg-white rounded-2xl shadow-xl p-6 md:p-8 border border-gray-100 backdrop-blur-sm bg-opacity-95">
+    <div className="absolute top-full left-0 z-[9999] w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-2xl max-h-64 overflow-y-auto pointer-events-auto">
+      {suggestions.map((station) => (
+        <button
+          key={station.code}
+          type="button"
+          className="w-full text-left px-4 py-3 hover:bg-blue-50 active:bg-blue-100 transition-colors flex items-center justify-between cursor-pointer"
+          onMouseDown={(e) => {
+            e.preventDefault();
+            selectStation(station, type);
+          }}
+        >
+          <div className="flex flex-col">
+            <span className="font-semibold text-gray-800">
+              {station.name}
+            </span>
+            <span className="text-xs text-gray-400 uppercase">
+              {station.code}
+            </span>
+          </div>
+          <MapPin className="h-4 w-4 text-gray-300" />
+        </button>
+      ))}
+    </div>
+  );
+};
+
+
+
+  return (
+    <div className="w-full max-w-5xl mx-auto -mt-10 bg-white rounded-2xl shadow-xl p-6 md:p-8 border border-gray-100 bg-opacity-95">
       <form onSubmit={handleSearch} className="flex flex-col lg:flex-row gap-4 items-end">
-        <div className="flex-1 w-full relative" ref={fromRef}>
+        <div className={cn("flex-1 w-full relative transition-all duration-200", showFromSuggestions ? "z-50" : "z-0")} ref={fromRef}>
           <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1 px-1">
             From Station <span className="text-red-500">*</span>
           </label>
-          <div className="relative group">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
               <MapPin className="h-5 w-5 text-blue-500" />
             </div>
             <input
               type="text"
               className="block w-full pl-10 pr-10 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none text-gray-800 placeholder-gray-400 font-medium"
-              placeholder="Search station (e.g. Surat or ST)"
+              placeholder="Search station"
               value={from}
               onChange={handleFromChange}
               onFocus={() => from.length >= 2 && setShowFromSuggestions(true)}
@@ -151,7 +171,7 @@ const SearchForm = ({ onSearch, isLoading }) => {
               <button
                 type="button"
                 onClick={() => { setFrom(''); setFromSuggestions([]); }}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-red-500 transition-colors"
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-red-500 transition-colors z-10"
                 title="Clear"
               >
                 <X className="h-4 w-4" />
@@ -161,7 +181,7 @@ const SearchForm = ({ onSearch, isLoading }) => {
           {showFromSuggestions && renderSuggestions(fromSuggestions, 'from')}
         </div>
 
-        <div className="hidden lg:flex items-center justify-center pb-2">
+        <div className="hidden lg:flex items-center justify-center pb-2 z-0">
           <button
             type="button"
             onClick={swapStations}
@@ -172,18 +192,18 @@ const SearchForm = ({ onSearch, isLoading }) => {
           </button>
         </div>
 
-        <div className="flex-1 w-full relative" ref={toRef}>
+        <div className={cn("flex-1 w-full relative transition-all duration-200", showToSuggestions ? "z-50" : "z-0")} ref={toRef}>
           <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1 px-1">
             To Station <span className="text-red-500">*</span>
           </label>
-          <div className="relative group">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
               <MapPin className="h-5 w-5 text-orange-500" />
             </div>
             <input
               type="text"
               className="block w-full pl-10 pr-10 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none text-gray-800 placeholder-gray-400 font-medium"
-              placeholder="Search destination (e.g. Anand or ANND)"
+              placeholder="Search destination"
               value={to}
               onChange={handleToChange}
               onFocus={() => to.length >= 2 && setShowToSuggestions(true)}
@@ -194,7 +214,7 @@ const SearchForm = ({ onSearch, isLoading }) => {
               <button
                 type="button"
                 onClick={() => { setTo(''); setToSuggestions([]); }}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-red-500 transition-colors"
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-red-500 transition-colors z-10"
                 title="Clear"
               >
                 <X className="h-4 w-4" />

@@ -19,7 +19,7 @@ function App() {
           <Route path="/generate-ticket" element={<TicketGeneration />} />
         </Routes>
 
-        <footer className="bg-white border-t py-12 px-4 mt-auto">
+        <footer className="bg-white border-t py-6 px-4 mt-auto">
           <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-8">
             <div className="flex items-center space-x-2">
               <div className="bg-blue-600 p-1.5 rounded-lg">
@@ -29,7 +29,7 @@ function App() {
                 Ticket<span className="text-orange-600">Generator</span>
               </span>
             </div>
-            <p className="text-gray-500 text-sm font-medium">© 2026 Indian Railway Ticket Generator. All rights reserved.</p>
+            <p className="text-gray-500 text-sm font-medium">© 2026 Ticket Generator Simulator</p>
             <div className="flex space-x-6">
               <a href="#" className="text-gray-400 hover:text-blue-600 transition-colors">Privacy</a>
               <a href="#" className="text-gray-400 hover:text-blue-600 transition-colors">Terms</a>

@@ -3,7 +3,7 @@ import { Clock, Navigation, CalendarDays, ChevronRight } from 'lucide-react';
 import { cn } from '../utils/utils';
 import { DAYS_SHORT } from '../../constants/miscConstant';
 
-const TrainCard = ({ train, onViewRoute, onGenerateTicket }) => {
+const TrainCard = ({ train, onViewRoute, onGenerateTicket, isGrid = false }) => {
   const { train_base } = train;
   
   // Running days representation: "0010011" -> M T W T F S S
@@ -11,27 +11,29 @@ const TrainCard = ({ train, onViewRoute, onGenerateTicket }) => {
   const runningDays = train_base.running_days.split('');
 
   return (
-    <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden hover:shadow-lg transition-all duration-300 group">
-      <div className="bg-blue-50/50 px-6 py-3 border-b border-gray-100 flex justify-between items-center">
-        <div className="flex items-center space-x-3">
-          <span className="text-sm font-bold bg-blue-600 text-white px-2 py-0.5 rounded uppercase">
+    <div className={cn(
+      "bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden hover:shadow-lg transition-all duration-300 group flex flex-col",
+      isGrid ? "h-full" : ""
+    )}>
+      <div className="bg-blue-50/50 px-4 py-2 border-b border-gray-100 flex justify-between items-center">
+        <div className="flex items-center space-x-2 overflow-hidden">
+          <span className="text-[10px] font-bold bg-blue-600 text-white px-1.5 py-0.5 rounded uppercase flex-shrink-0">
             {train_base.train_no}
           </span>
-          <h3 className="font-bold text-blue-900 group-hover:text-blue-700 transition-colors uppercase">
+          <h3 className="font-bold text-blue-900 group-hover:text-blue-700 transition-colors uppercase text-xs truncate">
             {train_base.train_name}
           </h3>
         </div>
-        <div className="flex space-x-1">
+        <div className="flex space-x-0.5 flex-shrink-0">
           {days.map((day, idx) => (
             <span
               key={idx}
               className={cn(
-                "text-[10px] w-5 h-5 flex items-center justify-center rounded-full font-bold transition-all",
+                "text-[9px] w-4 h-4 flex items-center justify-center rounded-full font-bold",
                 runningDays[idx] === '1' 
                   ? "bg-emerald-100 text-emerald-700" 
-                  : "bg-gray-100 text-gray-400"
+                  : "bg-gray-100 text-gray-300"
               )}
-              title={runningDays[idx] === '1' ? 'Runs on this day' : 'Does not run'}
             >
               {day}
             </span>
@@ -39,66 +41,66 @@ const TrainCard = ({ train, onViewRoute, onGenerateTicket }) => {
         </div>
       </div>
 
-      <div className="p-6">
-        <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-          <div className="text-center md:text-left flex-1 min-w-[120px]">
-            <p className="text-3xl font-black text-gray-800 tracking-tight">{train_base.from_time}</p>
-            <p className="text-sm font-bold text-blue-600 uppercase mt-1">{train_base.from_stn_code}</p>
-            <p className="text-xs text-gray-500 font-medium truncate max-w-[150px]">{train_base.from_stn_name}</p>
+      <div className={cn(isGrid ? "p-4 flex-1" : "p-4 px-6")}>
+        <div className={cn("flex justify-between items-center gap-4", isGrid ? "flex-col md:flex-row lg:flex-col xl:flex-row" : "flex-row")}>
+          <div className={cn("flex-1 flex flex-col", isGrid ? "items-center md:items-start lg:items-center xl:items-start" : "items-start")}>
+            <p className="text-2xl font-black text-gray-800 tracking-tight">{train_base.from_time}</p>
+            <p className="text-[10px] font-bold text-blue-600 uppercase mt-0.5">{train_base.from_stn_code}</p>
+            <p className="text-[10px] text-gray-500 font-medium truncate max-w-[150px]">{train_base.from_stn_name}</p>
           </div>
-
-          <div className="flex-1 flex flex-col items-center justify-center space-y-2">
-            <div className="flex items-center space-x-2 text-gray-400">
-              <div className="h-px w-12 md:w-20 bg-gray-200"></div>
-              <Clock className="h-4 w-4" />
-              <div className="h-px w-12 md:w-20 bg-gray-200"></div>
+ 
+          <div className="flex flex-col items-center justify-center space-y-1">
+            <p className="text-[9px] font-bold text-gray-400 uppercase">{train_base.travel_time} hrs</p>
+            <div className="flex items-center space-x-1 text-gray-300">
+              <div className="h-[1px] w-8 bg-gray-200"></div>
+              <Clock className="h-3 w-3" />
+              <div className="h-[1px] w-8 bg-gray-200"></div>
             </div>
-            <p className="text-xs font-bold text-gray-500 bg-gray-100 px-3 py-1 rounded-full">{train_base.travel_time} hrs</p>
           </div>
-
-          <div className="text-center md:text-right flex-1 min-w-[120px]">
-            <p className="text-3xl font-black text-gray-800 tracking-tight">{train_base.to_time}</p>
-            <p className="text-sm font-bold text-orange-600 uppercase mt-1">{train_base.to_stn_code}</p>
-            <p className="text-xs text-gray-500 font-medium truncate max-w-[150px]">{train_base.to_stn_name}</p>
+ 
+          <div className={cn("flex-1 flex flex-col", isGrid ? "items-center md:items-end lg:items-center xl:items-end" : "items-end")}>
+            <p className="text-2xl font-black text-gray-800 tracking-tight">{train_base.to_time}</p>
+            <p className="text-[10px] font-bold text-orange-600 uppercase mt-0.5">{train_base.to_stn_code}</p>
+            <p className="text-[10px] text-gray-500 font-medium truncate max-w-[150px] text-right">{train_base.to_stn_name}</p>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2 mt-6 justify-center md:justify-start border-t border-gray-50 pt-4">
-          {train_base.classes && train_base.classes.length > 0 ? (
-            train_base.classes.map((cls) => (
-              <span 
-                key={cls} 
-                className="text-[10px] font-bold px-2.5 py-1 bg-blue-50 text-blue-700 border border-blue-100 rounded-md uppercase"
-              >
-                {cls}
-              </span>
-            ))
-          ) : (
-            <span className="text-[10px] text-gray-400 italic font-medium">Class information not available</span>
+ 
+        <div className={cn("flex flex-wrap gap-1.5 justify-start mt-3 pt-3 border-t border-gray-50", isGrid ? "justify-center" : "")}>
+          {(train_base.classes || []).map((cls) => (
+            <span 
+              key={cls} 
+              className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-100 rounded uppercase"
+            >
+              {cls}
+            </span>
+          ))}
+          {(!train_base.classes || train_base.classes.length === 0) && (
+            <span className="text-[9px] text-gray-400 italic">No Class Info</span>
           )}
         </div>
       </div>
 
-      <div className="bg-gray-50/50 px-6 py-3 border-t border-gray-100 flex justify-between items-center">
-        <div className="flex items-center space-x-1 text-xs text-gray-500 font-medium">
-          <Navigation className="h-3 w-3" />
-          <span>Source: {train_base.source_stn_code}</span>
-          <span className="mx-1">•</span>
-          <span>Dest: {train_base.dstn_stn_code}</span>
-        </div>
-        <div className="flex items-center space-x-4">
+      <div className={cn("bg-gray-50/50 px-4 py-2 border-t border-gray-100 flex justify-between items-center", isGrid ? "flex-col space-y-3" : "")}>
+        {!isGrid && (
+          <div className="flex items-center space-x-1 text-[10px] text-gray-500 font-medium">
+            <Navigation className="h-2.5 w-2.5" />
+            <span>{train_base.source_stn_code} ➔ {train_base.dstn_stn_code}</span>
+          </div>
+        )}
+        <div className={cn("flex items-center", isGrid ? "w-full justify-between" : "space-x-3")}>
           <button 
             onClick={() => onViewRoute(train_base.train_no)}
-            className="flex items-center space-x-1 text-sm font-bold text-blue-600 hover:text-blue-800 transition-colors uppercase tracking-wide group/btn"
+            className="flex items-center space-x-0.5 text-[11px] font-bold text-blue-600 hover:text-blue-800 transition-colors uppercase tracking-tight group/btn"
           >
-            <span>View Route</span>
-            <ChevronRight className="h-4 w-4 group-hover/btn:translate-x-1 transition-transform" />
+            <span>Route</span>
+            <ChevronRight className="h-3 w-3 group-hover/btn:translate-x-0.5 transition-transform" />
           </button>
           <button 
             onClick={() => onGenerateTicket(train_base)}
-            className="bg-emerald-600 text-white px-4 py-1.5 rounded-lg text-sm font-bold hover:bg-emerald-700 transition-all shadow-sm hover:shadow-emerald-200 uppercase tracking-tight flex items-center space-x-1"
+            className="bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-[11px] font-bold hover:bg-emerald-700 transition-all shadow-sm hover:shadow-emerald-100 uppercase tracking-tight flex items-center space-x-1"
           >
-            <CalendarDays className="h-4 w-4" />
-            <span>Generate Ticket</span>
+            <CalendarDays className="h-3 w-3" />
+            <span>Generate</span>
           </button>
         </div>
       </div>
