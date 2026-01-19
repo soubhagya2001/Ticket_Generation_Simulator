@@ -6,7 +6,7 @@ on:
       - main
 
 permissions:
-  contents: write   # REQUIRED for gh-pages
+  contents: write
 
 jobs:
   deploy:
@@ -23,6 +23,11 @@ jobs:
         run: |
           cd Frontend
           npm install
+
+      - name: Configure git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
       - name: Build & Deploy
         run: |
